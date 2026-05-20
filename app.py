@@ -16,36 +16,51 @@ st.markdown(
     """
     <style>
         .block-container {
-            padding-top: 1.2rem;
-            padding-bottom: 4rem;
-            padding-left: 0.9rem;
-            padding-right: 0.9rem;
+            padding-top: 0.6rem;
+            padding-bottom: 3rem;
+            padding-left: 0.8rem;
+            padding-right: 0.8rem;
             max-width: 720px;
         }
         div.stButton > button {
             width: 100%;
-            height: 3.2rem;
-            font-size: 1.15rem;
+            height: 2.7rem;
+            font-size: 1.05rem;
             font-weight: 700;
-            border-radius: 0.8rem;
+            border-radius: 0.7rem;
         }
         [data-testid="stMetricValue"] {
-            font-size: 1.7rem;
+            font-size: 1.55rem;
+            margin-top: 0 !important;
         }
         [data-testid="stMetricLabel"] {
-            font-size: 0.85rem;
+            font-size: 0.78rem;
         }
         .stNumberInput input {
-            font-size: 1.1rem;
-            height: 2.6rem;
+            font-size: 1.0rem;
+            height: 2.3rem;
+        }
+        .stNumberInput label {
+            font-size: 0.82rem;
+            margin-bottom: 0.1rem !important;
         }
         .stTabs [data-baseweb="tab"] {
-            font-size: 1rem;
-            padding: 0.6rem 0.8rem;
+            font-size: 0.95rem;
+            padding: 0.4rem 0.6rem;
         }
-        h1 { font-size: 1.6rem !important; }
-        h2 { font-size: 1.2rem !important; }
-        h3 { font-size: 1.05rem !important; }
+        .stTabs [data-baseweb="tab-list"] {
+            margin-bottom: 0.3rem !important;
+        }
+        h1 { font-size: 1.1rem !important; margin: 0 0 0.2rem 0 !important; padding: 0 !important; }
+        h2 { font-size: 1.0rem !important; margin: 0.2rem 0 !important; }
+        h3 { font-size: 0.95rem !important; margin: 0.2rem 0 !important; }
+        [data-testid="stExpander"] summary { padding: 0.35rem 0.7rem !important; font-size: 0.92rem; }
+        div[data-testid="stCaptionContainer"], .stCaption {
+            margin: 0.1rem 0 !important;
+            font-size: 0.82rem;
+        }
+        .stPopover button { height: 2.7rem; }
+        [data-testid="stVerticalBlock"] { gap: 0.4rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -90,21 +105,20 @@ def undo_last() -> None:
 
 init_state()
 
-st.title("🎰 カジノ収支記録")
-st.metric("現在の持ち金", f"¥{st.session_state.money:,}")
+st.markdown("**🎰 カジノ収支記録**")
 
-tab_record, tab_analysis, tab_history = st.tabs(["💰 記録", "📊 分析", "📜 履歴"])
-
-# ---------------- 記録タブ ----------------
-with tab_record:
-    with st.expander("💵 持ち金を直接変更", expanded=False):
+col_money, col_edit = st.columns([3, 2], vertical_alignment="bottom")
+with col_money:
+    st.metric("現在の持ち金", f"¥{st.session_state.money:,}")
+with col_edit:
+    with st.popover("✏️ 持ち金を編集", use_container_width=True):
         new_money = st.number_input(
-            "持ち金",
+            "新しい持ち金",
             value=st.session_state.money,
             step=1000,
             key="money_input",
         )
-        if st.button("この金額に更新", key="update_money_btn"):
+        if st.button("この金額に更新", key="update_money_btn", use_container_width=True):
             diff = int(new_money) - st.session_state.money
             st.session_state.money = int(new_money)
             st.session_state.history.append(
@@ -120,29 +134,21 @@ with tab_record:
             )
             st.rerun()
 
-    st.subheader("ベッド設定")
+tab_record, tab_analysis, tab_history = st.tabs(["💰 記録", "📊 分析", "📜 履歴"])
+
+# ---------------- 記録タブ ----------------
+with tab_record:
     col_bet, col_mul = st.columns(2)
     with col_bet:
-        st.number_input(
-            "ベッド額",
-            min_value=0,
-            step=100,
-            key="bet",
-        )
+        st.number_input("ベッド額", min_value=0, step=100, key="bet")
     with col_mul:
-        st.number_input(
-            "倍率(整数)",
-            min_value=1,
-            step=1,
-            key="multiplier",
-        )
+        st.number_input("倍率(整数)", min_value=1, step=1, key="multiplier")
 
     bet = int(st.session_state.bet)
     mul = int(st.session_state.multiplier)
     win_change = bet * (mul - 1)
-    st.caption(f"成功 → **+¥{win_change:,}**（賭け金は支払い済み）　／　失敗 → **-¥{bet:,}**")
+    st.caption(f"成功: **+¥{win_change:,}** ／ 失敗: **-¥{bet:,}**")
 
-    st.subheader("結果を記録")
     col_win, col_lose = st.columns(2)
     with col_win:
         if st.button("✅ 成功", type="primary", key="win_btn"):
@@ -184,25 +190,22 @@ with tab_record:
                 st.error(
                     f"💧 **失敗**　ロール {j['roll']:.1f} > {j['probability']:.1f}%　({j['time']})"
                 )
-        st.caption("判定は表示のみ。持ち金やベッドには影響しません。上のボタンで手動で記録してください。")
-
-    st.divider()
+        st.caption("判定は表示のみ。持ち金やベッドには影響しません。")
 
     col_undo, col_reset = st.columns(2)
     with col_undo:
-        if st.button("↩️ 直前を取消", key="undo_btn"):
+        if st.button("↩️ 取消", key="undo_btn"):
             undo_last()
             st.rerun()
     with col_reset:
-        with st.popover("🗑️ 全リセット", use_container_width=True):
-            st.write("履歴と持ち金を初期化します。")
+        with st.popover("🗑️ リセット", use_container_width=True):
             new_start = st.number_input(
                 "リセット後の持ち金",
                 value=10000,
                 step=1000,
                 key="reset_money_input",
             )
-            if st.button("リセット実行", key="reset_confirm"):
+            if st.button("リセット実行", key="reset_confirm", use_container_width=True):
                 st.session_state.history = []
                 st.session_state.money = int(new_start)
                 st.rerun()
