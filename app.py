@@ -20,7 +20,9 @@ st.markdown(
             padding-bottom: 3rem;
             padding-left: 0.8rem;
             padding-right: 0.8rem;
-            max-width: 720px;
+            max-width: 420px;
+            margin-left: 0 !important;
+            margin-right: auto !important;
         }
         div.stButton > button {
             width: 100%;
@@ -67,12 +69,6 @@ st.markdown(
         }
         [data-testid="stHorizontalBlock"] > [data-testid="column"] {
             min-width: 0 !important;
-        }
-        .inline-label {
-            font-size: 0.95rem;
-            font-weight: 600;
-            margin: 0;
-            padding-top: 0.55rem;
         }
     </style>
     """,
@@ -126,29 +122,11 @@ tab_record, tab_analysis, tab_history = st.tabs(["💰 記録", "📊 分析", "
 
 # ---------------- 記録タブ ----------------
 with tab_record:
-    bl, bi = st.columns([2, 5], vertical_alignment="center")
-    with bl:
-        st.markdown('<div class="inline-label">ベッド額</div>', unsafe_allow_html=True)
-    with bi:
-        st.number_input(
-            "ベッド額",
-            min_value=0,
-            step=100,
-            key="bet",
-            label_visibility="collapsed",
-        )
-
-    ml, mi = st.columns([2, 5], vertical_alignment="center")
-    with ml:
-        st.markdown('<div class="inline-label">倍率(整数)</div>', unsafe_allow_html=True)
-    with mi:
-        st.number_input(
-            "倍率",
-            min_value=1,
-            step=1,
-            key="multiplier",
-            label_visibility="collapsed",
-        )
+    col_bet, col_mul = st.columns(2)
+    with col_bet:
+        st.number_input("ベッド額", min_value=0, step=100, key="bet")
+    with col_mul:
+        st.number_input("倍率(整数)", min_value=1, step=1, key="multiplier")
 
     bet = int(st.session_state.bet)
     mul = int(st.session_state.multiplier)
