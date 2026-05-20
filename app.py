@@ -61,8 +61,27 @@ st.markdown(
             margin: 0.1rem 0 !important;
             font-size: 0.82rem;
         }
-        .stPopover button { height: 2.7rem; }
+        .stPopover button { height: 2.7rem; min-width: 8.5rem; white-space: nowrap !important; }
         [data-testid="stVerticalBlock"] { gap: 0.4rem; }
+        /* ボタン行: 左寄せ・幅を内容に合わせる */
+        .btn-row [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            gap: 0.5rem !important;
+            justify-content: flex-start !important;
+        }
+        .btn-row [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            flex: 0 0 auto !important;
+            min-width: 0 !important;
+            width: auto !important;
+        }
+        .btn-row div.stButton > button,
+        .btn-row .stPopover > button {
+            width: auto !important;
+            min-width: 8.5rem;
+            padding-left: 1.2rem;
+            padding-right: 1.2rem;
+            white-space: nowrap !important;
+        }
         [data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important;
             gap: 0.5rem !important;
@@ -116,23 +135,23 @@ init_state()
 
 st.markdown("**🎰 カジノ収支記録**")
 
-st.metric("現在の持ち金", f"¥{st.session_state.money:,}")
-
 tab_record, tab_analysis, tab_history = st.tabs(["💰 記録", "📊 分析", "📜 履歴"])
 
 # ---------------- 記録タブ ----------------
 with tab_record:
-    col_bet, col_mul = st.columns(2)
-    with col_bet:
-        st.number_input("ベッド額", min_value=0, step=100, key="bet")
-    with col_mul:
-        st.number_input("倍率(整数)", min_value=1, step=1, key="multiplier")
+    st.markdown(f"**現在の持ち金　¥{st.session_state.money:,}**")
+
+    # ベッド額・倍率を縦並びに
+    st.number_input("ベッド額", min_value=0, step=100, key="bet")
+    st.number_input("倍率(整数)", min_value=1, step=1, key="multiplier")
 
     bet = int(st.session_state.bet)
     mul = int(st.session_state.multiplier)
     win_change = bet * (mul - 1)
 
-    col_win, col_lose = st.columns(2)
+    # 成功/失敗ボタン: 左寄せ
+    st.markdown('<div class="btn-row">', unsafe_allow_html=True)
+    col_win, col_lose, col_spacer = st.columns([1, 1, 2])
     with col_win:
         if st.button("✅ 成功", type="primary", key="win_btn"):
             record("成功", win_change, bet, mul)
@@ -141,6 +160,7 @@ with tab_record:
         if st.button("❌ 失敗", key="lose_btn"):
             record("失敗", -bet, bet, mul)
             st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
     with st.expander("🎲 確率で判定（おまけ）", expanded=False):
         st.number_input(
@@ -169,7 +189,8 @@ with tab_record:
             else:
                 record("失敗", -bet, bet, mul)
 
-        col_judge, col_apply, col_both = st.columns(3)
+        st.markdown('<div class="btn-row">', unsafe_allow_html=True)
+        col_judge, col_apply, col_both, col_sp = st.columns([1, 1, 1.4, 0.6])
         with col_judge:
             if st.button("🎲 判定", key="judge_btn"):
                 st.session_state.last_judgment = _roll_judgment()
@@ -190,6 +211,7 @@ with tab_record:
                 j["applied"] = True
                 st.session_state.last_judgment = j
                 st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
 
         if st.session_state.last_judgment is not None:
             j = st.session_state.last_judgment
@@ -200,7 +222,7 @@ with tab_record:
                 )
             else:
                 st.error(
-                    f"💧 **失敗**　ロール {j['roll']:.1f} > {j['probability']:.1f}%　({j['time']}){applied_mark}"
+                    f"💅 **失敗**　ロール {j['roll']:.1f} > {j['probability']:.1f}%　({j['time']}){applied_mark}"
                 )
 
     with st.popover("✏️ 持ち金を編集", use_container_width=True):
@@ -226,23 +248,19 @@ with tab_record:
             )
             st.rerun()
 
-    col_undo, col_reset = st.columns(2)
+    # 取消/リセットも左寄せ
+    st.markdown('<div class="btn-row">', unsafe_allow_html=True)
+    col_undo, col_reset, col_sp2 = st.columns([1, 1, 2])
     with col_undo:
         if st.button("↩️ 取消", key="undo_btn"):
             undo_last()
             st.rerun()
     with col_reset:
-        with st.popover("🗑️ リセット", use_container_width=True):
-            new_start = st.number_input(
-                "リセット後の持ち金",
-                value=10000,
-                step=1000,
-                key="reset_money_input",
-            )
-            if st.button("リセット実行", key="reset_confirm", use_container_width=True):
-                st.session_state.history = []
-                st.session_state.money = int(new_start)
-                st.rerun()
+        if st.button("リセット", key="reset_btn"):
+            st.session_state.history = []
+            st.session_state.money = 10000
+            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ---------------- 分析タブ ----------------
