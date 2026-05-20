@@ -61,6 +61,19 @@ st.markdown(
         }
         .stPopover button { height: 2.7rem; }
         [data-testid="stVerticalBlock"] { gap: 0.4rem; }
+        [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            gap: 0.5rem !important;
+        }
+        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            min-width: 0 !important;
+        }
+        .inline-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0;
+            padding-top: 0.55rem;
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -73,7 +86,7 @@ def init_state() -> None:
         "bet": 1000,
         "multiplier": 2,
         "history": [],
-        "win_probability": 50.0,
+        "win_probability": 48.6,
         "last_judgment": None,
     }
     for key, value in defaults.items():
@@ -107,10 +120,111 @@ init_state()
 
 st.markdown("**🎰 カジノ収支記録**")
 
-col_money, col_edit = st.columns([3, 2], vertical_alignment="bottom")
-with col_money:
-    st.metric("現在の持ち金", f"¥{st.session_state.money:,}")
-with col_edit:
+st.metric("現在の持ち金", f"¥{st.session_state.money:,}")
+
+tab_record, tab_analysis, tab_history = st.tabs(["💰 記録", "📊 分析", "📜 履歴"])
+
+# ---------------- 記録タブ ----------------
+with tab_record:
+    bl, bi = st.columns([2, 5], vertical_alignment="center")
+    with bl:
+        st.markdown('<div class="inline-label">ベッド額</div>', unsafe_allow_html=True)
+    with bi:
+        st.number_input(
+            "ベッド額",
+            min_value=0,
+            step=100,
+            key="bet",
+            label_visibility="collapsed",
+        )
+
+    ml, mi = st.columns([2, 5], vertical_alignment="center")
+    with ml:
+        st.markdown('<div class="inline-label">倍率(整数)</div>', unsafe_allow_html=True)
+    with mi:
+        st.number_input(
+            "倍率",
+            min_value=1,
+            step=1,
+            key="multiplier",
+            label_visibility="collapsed",
+        )
+
+    bet = int(st.session_state.bet)
+    mul = int(st.session_state.multiplier)
+    win_change = bet * (mul - 1)
+
+    col_win, col_lose = st.columns(2)
+    with col_win:
+        if st.button("✅ 成功", type="primary", key="win_btn"):
+            record("成功", win_change, bet, mul)
+            st.rerun()
+    with col_lose:
+        if st.button("❌ 失敗", key="lose_btn"):
+            record("失敗", -bet, bet, mul)
+            st.rerun()
+
+    with st.expander("🎲 確率で判定（おまけ）", expanded=False):
+        st.number_input(
+            "成功確率 (%)",
+            min_value=0.0,
+            max_value=100.0,
+            step=0.1,
+            format="%.1f",
+            key="win_probability",
+        )
+        def _roll_judgment() -> dict:
+            p = round(float(st.session_state.win_probability), 1)
+            threshold = int(round(p * 10))
+            roll_int = random.randint(1, 1000)
+            return {
+                "success": roll_int <= threshold,
+                "probability": p,
+                "roll": roll_int / 10,
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "applied": False,
+            }
+
+        def _apply_judgment(j: dict) -> None:
+            if j["success"]:
+                record("成功", win_change, bet, mul)
+            else:
+                record("失敗", -bet, bet, mul)
+
+        col_judge, col_apply, col_both = st.columns(3)
+        with col_judge:
+            if st.button("🎲 判定", key="judge_btn"):
+                st.session_state.last_judgment = _roll_judgment()
+                st.rerun()
+        with col_apply:
+            apply_disabled = (
+                st.session_state.last_judgment is None
+                or st.session_state.last_judgment.get("applied", False)
+            )
+            if st.button("➡️ 反映", key="apply_btn", disabled=apply_disabled):
+                _apply_judgment(st.session_state.last_judgment)
+                st.session_state.last_judgment["applied"] = True
+                st.rerun()
+        with col_both:
+            if st.button("🎲➡️ 判定&反映", key="judge_apply_btn"):
+                j = _roll_judgment()
+                _apply_judgment(j)
+                j["applied"] = True
+                st.session_state.last_judgment = j
+                st.rerun()
+
+        if st.session_state.last_judgment is not None:
+            j = st.session_state.last_judgment
+            applied_mark = "  📝 反映済み" if j.get("applied") else ""
+            if j["success"]:
+                st.success(
+                    f"✨ **成功**　ロール {j['roll']:.1f} ≤ {j['probability']:.1f}%　({j['time']}){applied_mark}"
+                )
+            else:
+                st.error(
+                    f"💧 **失敗**　ロール {j['roll']:.1f} > {j['probability']:.1f}%　({j['time']}){applied_mark}"
+                )
+
     with st.popover("✏️ 持ち金を編集", use_container_width=True):
         new_money = st.number_input(
             "新しい持ち金",
@@ -133,64 +247,6 @@ with col_edit:
                 }
             )
             st.rerun()
-
-tab_record, tab_analysis, tab_history = st.tabs(["💰 記録", "📊 分析", "📜 履歴"])
-
-# ---------------- 記録タブ ----------------
-with tab_record:
-    col_bet, col_mul = st.columns(2)
-    with col_bet:
-        st.number_input("ベッド額", min_value=0, step=100, key="bet")
-    with col_mul:
-        st.number_input("倍率(整数)", min_value=1, step=1, key="multiplier")
-
-    bet = int(st.session_state.bet)
-    mul = int(st.session_state.multiplier)
-    win_change = bet * (mul - 1)
-    st.caption(f"成功: **+¥{win_change:,}** ／ 失敗: **-¥{bet:,}**")
-
-    col_win, col_lose = st.columns(2)
-    with col_win:
-        if st.button("✅ 成功", type="primary", key="win_btn"):
-            record("成功", win_change, bet, mul)
-            st.rerun()
-    with col_lose:
-        if st.button("❌ 失敗", key="lose_btn"):
-            record("失敗", -bet, bet, mul)
-            st.rerun()
-
-    with st.expander("🎲 確率で判定（おまけ）", expanded=False):
-        st.number_input(
-            "成功確率 (%)",
-            min_value=0.0,
-            max_value=100.0,
-            step=0.1,
-            format="%.1f",
-            key="win_probability",
-        )
-        if st.button("🎲 判定する", key="judge_btn"):
-            p = round(float(st.session_state.win_probability), 1)
-            threshold = int(round(p * 10))
-            roll_int = random.randint(1, 1000)
-            st.session_state.last_judgment = {
-                "success": roll_int <= threshold,
-                "probability": p,
-                "roll": roll_int / 10,
-                "time": datetime.now().strftime("%H:%M:%S"),
-            }
-            st.rerun()
-
-        if st.session_state.last_judgment is not None:
-            j = st.session_state.last_judgment
-            if j["success"]:
-                st.success(
-                    f"✨ **成功**　ロール {j['roll']:.1f} ≤ {j['probability']:.1f}%　({j['time']})"
-                )
-            else:
-                st.error(
-                    f"💧 **失敗**　ロール {j['roll']:.1f} > {j['probability']:.1f}%　({j['time']})"
-                )
-        st.caption("判定は表示のみ。持ち金やベッドには影響しません。")
 
     col_undo, col_reset = st.columns(2)
     with col_undo:
