@@ -64,31 +64,35 @@ st.markdown(
         .stPopover button { height: 2.7rem; min-width: 8.5rem; white-space: nowrap !important; }
         [data-testid="stVerticalBlock"] { gap: 0.4rem; }
         /* ボタン行: 左寄せ・幅を内容に合わせる */
-        .btn-row [data-testid="stHorizontalBlock"] {
+        /* ===== ボタン行を完全左寄せ ===== */
+        .btn-row div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
             flex-wrap: nowrap !important;
-            gap: 0.5rem !important;
             justify-content: flex-start !important;
-            width: fit-content !important;
+            align-items: center !important;
+            gap: 0.45rem !important;
         }
-        .btn-row [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+
+        /* columns が均等幅にならないよう固定 */
+        .btn-row div[data-testid="column"] {
             flex: 0 0 auto !important;
-            min-width: 0 !important;
-            width: fit-content !important;
+            width: auto !important;
+            min-width: unset !important;
+            padding: 0 !important;
         }
-        .btn-row div.stButton > button,
+
+        /* ボタンサイズ */
+        .btn-row .stButton > button,
         .btn-row .stPopover > button {
             width: auto !important;
-            min-width: 8.5rem;
-            padding-left: 1.2rem;
-            padding-right: 1.2rem;
+            min-width: 0 !important;
+            padding: 0.6rem 1rem !important;
             white-space: nowrap !important;
         }
-        [data-testid="stHorizontalBlock"] {
-            flex-wrap: nowrap !important;
-            gap: 0.5rem !important;
-        }
-        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
-            min-width: 0 !important;
+
+        /* Streamlitデフォルトの stretch を解除 */
+        .btn-row .stButton {
+            width: auto !important;
         }
     </style>
     """,
@@ -134,7 +138,7 @@ def undo_last() -> None:
 
 init_state()
 
-st.title("🎰 カジノ収支記録")
+st.markdown("**🎰 カジノ収支記録**")
 
 tab_record, tab_analysis, tab_history = st.tabs(["💰 記録", "📊 分析", "📜 履歴"])
 
@@ -191,7 +195,7 @@ with tab_record:
                 record("失敗", -bet, bet, mul)
 
         st.markdown('<div class="btn-row">', unsafe_allow_html=True)
-        col_judge, col_apply, col_both, col_sp = st.columns([1, 1, 1.4, 0.6])
+        col_judge, col_apply, col_both = st.columns(3)
         with col_judge:
             if st.button("🎲 判定", key="judge_btn"):
                 st.session_state.last_judgment = _roll_judgment()
