@@ -68,11 +68,12 @@ st.markdown(
             flex-wrap: nowrap !important;
             gap: 0.5rem !important;
             justify-content: flex-start !important;
+            width: fit-content !important;
         }
         .btn-row [data-testid="stHorizontalBlock"] > [data-testid="column"] {
             flex: 0 0 auto !important;
             min-width: 0 !important;
-            width: auto !important;
+            width: fit-content !important;
         }
         .btn-row div.stButton > button,
         .btn-row .stPopover > button {
@@ -133,7 +134,7 @@ def undo_last() -> None:
 
 init_state()
 
-st.markdown("**🎰 カジノ収支記録**")
+st.title("🎰 カジノ収支記録")
 
 tab_record, tab_analysis, tab_history = st.tabs(["💰 記録", "📊 分析", "📜 履歴"])
 
@@ -151,7 +152,7 @@ with tab_record:
 
     # 成功/失敗ボタン: 左寄せ
     st.markdown('<div class="btn-row">', unsafe_allow_html=True)
-    col_win, col_lose, col_spacer = st.columns([1, 1, 2])
+    col_win, col_lose = st.columns(2)
     with col_win:
         if st.button("✅ 成功", type="primary", key="win_btn"):
             record("成功", win_change, bet, mul)
@@ -250,13 +251,13 @@ with tab_record:
 
     # 取消/リセットも左寄せ
     st.markdown('<div class="btn-row">', unsafe_allow_html=True)
-    col_undo, col_reset, col_sp2 = st.columns([1, 1, 2])
+    col_undo, col_reset = st.columns(2)
     with col_undo:
         if st.button("↩️ 取消", key="undo_btn"):
             undo_last()
             st.rerun()
     with col_reset:
-        if st.button("リセット", key="reset_btn"):
+        if st.button("🗑️ リセット", key="reset_btn"):
             st.session_state.history = []
             st.session_state.money = 10000
             st.rerun()
