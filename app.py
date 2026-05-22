@@ -107,10 +107,13 @@ def init_state() -> None:
         "mg_max_losses": 4,
         "mg_multiplier": 2,
         "mg_last_judgment": None,
+        "mg_win_probability": 48.6,
         # フィボナッチ用
         "fib_index": 0,             # 現在のフィボナッチ数列インデックス
         "fib_max_losses": 6,        # 破産までの連敗数（数列の長さ）
         "fib_multiplier": 2,        # 倍率
+        "fib_last_judgment": None,
+        "fib_win_probability": 48.6,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -398,6 +401,69 @@ with tab_martingale:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # マーチンゲール説明
+    with st.expander("🎲 確率で判定（おまけ）", expanded=False):
+        st.number_input(
+            "成功確率 (%)",
+            min_value=0.0,
+            max_value=100.0,
+            step=0.1,
+            format="%.1f",
+            key="mg_win_probability",
+        )
+
+        def _mg_roll() -> dict:
+            p = round(float(st.session_state.mg_win_probability), 1)
+            roll_int = random.randint(1, 1000)
+            return {
+                "success": roll_int <= int(round(p * 10)),
+                "probability": p,
+                "roll": roll_int / 10,
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "applied": False,
+            }
+
+        def _mg_apply(j: dict) -> None:
+            if j["success"]:
+                record("成功", win_change_mg, current_bet, mg_mul)
+                st.session_state.mg_lose_streak = 0
+            else:
+                record("失敗", -current_bet, current_bet, mg_mul)
+                st.session_state.mg_lose_streak = min(
+                    st.session_state.mg_lose_streak + 1, mg_max
+                )
+
+        st.markdown('<div class="btn-row">', unsafe_allow_html=True)
+        col_mj, col_ma, col_mba = st.columns(3)
+        with col_mj:
+            if st.button("🎲 判定", key="mg_judge_btn"):
+                st.session_state.mg_last_judgment = _mg_roll()
+                st.rerun()
+        with col_ma:
+            mg_apply_disabled = (
+                st.session_state.mg_last_judgment is None
+                or st.session_state.mg_last_judgment.get("applied", False)
+            )
+            if st.button("➡️ 反映", key="mg_apply_btn", disabled=mg_apply_disabled):
+                _mg_apply(st.session_state.mg_last_judgment)
+                st.session_state.mg_last_judgment["applied"] = True
+                st.rerun()
+        with col_mba:
+            if st.button("🎲➡️ 判定&反映", key="mg_judge_apply_btn"):
+                j = _mg_roll()
+                _mg_apply(j)
+                j["applied"] = True
+                st.session_state.mg_last_judgment = j
+                st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        if st.session_state.mg_last_judgment is not None:
+            j = st.session_state.mg_last_judgment
+            applied_mark = "  📝 反映済み" if j.get("applied") else ""
+            if j["success"]:
+                st.success(f"✨ **成功**　ロール {j['roll']:.1f} ≤ {j['probability']:.1f}%　({j['time']}){applied_mark}")
+            else:
+                st.error(f"💅 **失敗**　ロール {j['roll']:.1f} > {j['probability']:.1f}%　({j['time']}){applied_mark}")
+
     with st.expander("ℹ️ マーチンゲール法について", expanded=False):
         st.markdown(f"""
 **マーチンゲール法**とは、負けるたびにベット額を倍(×{mg_mul})にしていき、
@@ -537,6 +603,67 @@ with tab_fibonacci:
             st.session_state.fib_index = 0
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
+
+    with st.expander("🎲 確率で判定（おまけ）", expanded=False):
+        st.number_input(
+            "成功確率 (%)",
+            min_value=0.0,
+            max_value=100.0,
+            step=0.1,
+            format="%.1f",
+            key="fib_win_probability",
+        )
+
+        def _fib_roll() -> dict:
+            p = round(float(st.session_state.fib_win_probability), 1)
+            roll_int = random.randint(1, 1000)
+            return {
+                "success": roll_int <= int(round(p * 10)),
+                "probability": p,
+                "roll": roll_int / 10,
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "applied": False,
+            }
+
+        def _fib_apply(j: dict) -> None:
+            if j["success"]:
+                record("成功", win_change_fib, current_bet_fib, fib_mul)
+                st.session_state.fib_index = max(0, fib_idx - 2)
+            else:
+                record("失敗", -current_bet_fib, current_bet_fib, fib_mul)
+                st.session_state.fib_index = min(fib_idx + 1, fib_max - 1)
+
+        st.markdown('<div class="btn-row">', unsafe_allow_html=True)
+        col_fj, col_fa, col_fba = st.columns(3)
+        with col_fj:
+            if st.button("🎲 判定", key="fib_judge_btn"):
+                st.session_state.fib_last_judgment = _fib_roll()
+                st.rerun()
+        with col_fa:
+            fib_apply_disabled = (
+                st.session_state.fib_last_judgment is None
+                or st.session_state.fib_last_judgment.get("applied", False)
+            )
+            if st.button("➡️ 反映", key="fib_apply_btn", disabled=fib_apply_disabled):
+                _fib_apply(st.session_state.fib_last_judgment)
+                st.session_state.fib_last_judgment["applied"] = True
+                st.rerun()
+        with col_fba:
+            if st.button("🎲➡️ 判定&反映", key="fib_judge_apply_btn"):
+                j = _fib_roll()
+                _fib_apply(j)
+                j["applied"] = True
+                st.session_state.fib_last_judgment = j
+                st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        if st.session_state.fib_last_judgment is not None:
+            j = st.session_state.fib_last_judgment
+            applied_mark = "  📝 反映済み" if j.get("applied") else ""
+            if j["success"]:
+                st.success(f"✨ **成功**　ロール {j['roll']:.1f} ≤ {j['probability']:.1f}%　({j['time']}){applied_mark}")
+            else:
+                st.error(f"💅 **失敗**　ロール {j['roll']:.1f} > {j['probability']:.1f}%　({j['time']}){applied_mark}")
 
     with st.expander("ℹ️ フィボナッチ法について", expanded=False):
         seq_str = " → ".join(str(v) for v in fib_seq)
